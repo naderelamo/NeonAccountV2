@@ -1,246 +1,340 @@
---[[========================================
-         NeonAccount Shop + AimAssist + ESP
-===========================================]]--
+-- LocalScript: Login + Panel centrado + Watermark + AimAssist potente (no snap) + ESP + FOV
+-- PEGAR en StarterPlayer -> StarterPlayerScripts
 
-repeat wait() until game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui")
-local player = game.Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- ================= LOGIN CONFIG =================
-local accounts = {
-    {user = "Admin", pass = "nader123"},
-    {user = "Neon1", pass = "V3x!r9Q"},
-    {user = "Neon2", pass = "M0nK#72"},
-    {user = "Neon3", pass = "Zebra_88a"},
-    {user = "Neon4", pass = "R!ver2025"},
-    {user = "Neon5", pass = "Cl0ud-911"},
-    {user = "Neon6", pass = "Sky_7Paz"},
-    {user = "Neon7", pass = "B0lt&44"},
+-- CONFIG
+local ACCOUNTS = {
+	{user="Admin", pass="nader123"},
+	{user="NeonUser1", pass="V3x!r9Q"},
+	{user="NeonUser2", pass="M0nK#72"},
+	{user="NeonUser3", pass="Zebra_88a"},
+	{user="NeonUser4", pass="R!ver2025"},
+	{user="NeonUser5", pass="Cl0ud-911"},
+	{user="NeonUser6", pass="Sky_7Paz"},
+	{user="NeonUser7", pass="B0lt&44"},
+	{user="NeonUser8", pass="Echo!Delta9"},
 }
+local EXPIRATION_DAYS = 90
 
+-- AimAssist tuning (muy fuerte por defecto pero sigue siendo 'assist')
+local AIM_KEY = Enum.UserInputType.MouseButton2 -- clic derecho
+local AIM_MAX_DIST = 300
+local AIM_MAX_ANGLE = 60
+local AIM_STRENGTH_DEFAULT = 0.98 -- 0..1 (0 nada, 1 casi snap)
+local AIM_CAM_LERP = 0.95          -- 0..1 (mayor = respuesta más rápida)
+local FOV_DEFAULT = 180
+local ESP_UPDATE_RATE = 0.12
+
+-- servicios
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+repeat task.wait() until player and player:FindFirstChild("PlayerGui")
+local playerGui = player:WaitForChild("PlayerGui")
+local Camera = workspace.CurrentCamera
+
+-- util
+local function trim(s) return tostring(s):gsub("^%s*(.-)%s*$","%1") end
 local function findAccount(u,p)
-    for _,acc in ipairs(accounts) do
-        if acc.user==u and acc.pass==p then return true end
-    end
-    return false
+	for _,a in ipairs(ACCOUNTS) do if a.user==u and a.pass==p then return true end end
+	return false
 end
 
--- ================= LOGIN GUI =================
-local loginGui = Instance.new("ScreenGui")
+-- cleanup previos
+for _,n in ipairs({"NeonLoginGui","NeonMainGui","NeonFOVGui","NeonWatermarkGui"}) do
+	local g = playerGui:FindFirstChild(n)
+	if g then pcall(function() g:Destroy() end) end
+end
+
+-- =========== WATERMARK (ARRIBA-DERECHA) ===========
+local watermarkGui = Instance.new("ScreenGui", playerGui)
+watermarkGui.Name = "NeonWatermarkGui"
+watermarkGui.ResetOnSpawn = false
+local watermarkLabel = Instance.new("TextLabel", watermarkGui)
+watermarkLabel.Size = UDim2.new(0,220,0,24)
+watermarkLabel.Position = UDim2.new(1,-230,0,8)
+watermarkLabel.BackgroundTransparency = 1
+watermarkLabel.Font = Enum.Font.GothamBold
+watermarkLabel.TextSize = 16
+watermarkLabel.TextColor3 = Color3.fromRGB(180,0,255)
+watermarkLabel.Text = "NeonShop Account"
+watermarkLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+-- =========== LOGIN GUI ===========
+local loginGui = Instance.new("ScreenGui", playerGui)
 loginGui.Name = "NeonLoginGui"
 loginGui.ResetOnSpawn = false
-loginGui.Parent = playerGui
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 360, 0, 220)
-frame.Position = UDim2.new(0.5, -180, 0.5, -110)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-frame.BackgroundTransparency = 0.08
+local frame = Instance.new("Frame", loginGui)
+frame.Size = UDim2.new(0,420,0,240)
+frame.Position = UDim2.new(0.5, -210, 0.5, -120)
+frame.AnchorPoint = Vector2.new(0.5,0.5)
+frame.BackgroundColor3 = Color3.fromRGB(18,20,28)
 frame.BorderSizePixel = 0
-frame.Parent = loginGui
+local frameCorner = Instance.new("UICorner", frame); frameCorner.CornerRadius = UDim.new(0,12)
 
-local title = Instance.new("TextLabel")
-title.Parent = frame
-title.Size = UDim2.new(1,0,0,40)
-title.Position = UDim2.new(0,0,0,6)
-title.BackgroundTransparency = 1
-title.Text = "Iniciar sesión - NeonAccount Shop"
-title.Font = Enum.Font.GothamBold
-title.TextSize = 18
-title.TextColor3 = Color3.fromRGB(180,0,255)
-title.TextXAlignment = Enum.TextXAlignment.Center
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,40); title.Position = UDim2.new(0,0,0,8)
+title.BackgroundTransparency = 1; title.Font = Enum.Font.GothamBlack; title.TextSize = 22
+title.TextColor3 = Color3.fromRGB(255,110,180); title.Text = "NEONSHOP LOGIN"
 
-local userBox = Instance.new("TextBox")
-userBox.Parent = frame
-userBox.Size = UDim2.new(0, 320, 0, 30)
-userBox.Position = UDim2.new(0, 20, 0, 70)
-userBox.PlaceholderText = "Usuario"
-userBox.ClearTextOnFocus = false
-userBox.Font = Enum.Font.Gotham
-userBox.TextSize = 18
-userBox.TextColor3 = Color3.new(0,0,0)
-userBox.BackgroundColor3 = Color3.fromRGB(240,240,240)
-userBox.BorderSizePixel = 0
+local userBox = Instance.new("TextBox", frame)
+userBox.Size = UDim2.new(0,360,0,42); userBox.Position = UDim2.new(0,30,0,78)
+userBox.PlaceholderText = "Usuario"; userBox.Font = Enum.Font.Gotham; userBox.TextSize = 18
+userBox.BackgroundColor3 = Color3.fromRGB(245,245,247)
 
-local passBox = Instance.new("TextBox")
-passBox.Parent = frame
-passBox.Size = UDim2.new(0, 320, 0, 30)
-passBox.Position = UDim2.new(0, 20, 0, 110)
-passBox.PlaceholderText = "Contraseña"
-passBox.ClearTextOnFocus = false
-passBox.Font = Enum.Font.Gotham
-passBox.TextSize = 18
-passBox.TextColor3 = Color3.new(0,0,0)
-passBox.BackgroundColor3 = Color3.fromRGB(240,240,240)
-passBox.BorderSizePixel = 0
+local passBox = Instance.new("TextBox", frame)
+passBox.Size = UDim2.new(0,360,0,42); passBox.Position = UDim2.new(0,30,0,126)
+passBox.PlaceholderText = "Contraseña"; passBox.Font = Enum.Font.Gotham; passBox.TextSize = 18
+passBox.BackgroundColor3 = Color3.fromRGB(245,245,247)
 
-local loginBtn = Instance.new("TextButton")
-loginBtn.Parent = frame
-loginBtn.Size = UDim2.new(0, 140, 0, 36)
-loginBtn.Position = UDim2.new(0.5, -70, 1, -56)
-loginBtn.Text = "Iniciar sesión"
-loginBtn.Font = Enum.Font.GothamBold
-loginBtn.TextSize = 18
-loginBtn.TextColor3 = Color3.fromRGB(255,255,255)
-loginBtn.BackgroundColor3 = Color3.fromRGB(120,30,180)
-loginBtn.BorderSizePixel = 0
+local loginBtn = Instance.new("TextButton", frame)
+loginBtn.Size = UDim2.new(0,180,0,42); loginBtn.Position = UDim2.new(0.5,-90,1,-56)
+loginBtn.AnchorPoint = Vector2.new(0.5,1)
+loginBtn.Text = "Iniciar sesión"; loginBtn.Font = Enum.Font.GothamBold; loginBtn.TextSize = 18
+loginBtn.BackgroundColor3 = Color3.fromRGB(160,60,200); loginBtn.TextColor3 = Color3.fromRGB(255,255,255)
+local loginCorner = Instance.new("UICorner", loginBtn); loginCorner.CornerRadius = UDim.new(0,10)
 
-local feedback = Instance.new("TextLabel")
-feedback.Parent = frame
-feedback.Size = UDim2.new(1, -20, 0, 22)
-feedback.Position = UDim2.new(0, 10, 1, -28)
-feedback.BackgroundTransparency = 1
-feedback.Text = ""
-feedback.Font = Enum.Font.Gotham
-feedback.TextSize = 14
-feedback.TextColor3 = Color3.fromRGB(255,120,120)
-feedback.TextXAlignment = Enum.TextXAlignment.Center
+local statusLabel = Instance.new("TextLabel", frame)
+statusLabel.Size = UDim2.new(1,-20,0,20); statusLabel.Position = UDim2.new(0,10,1,-26)
+statusLabel.BackgroundTransparency = 1; statusLabel.Font = Enum.Font.Gotham; statusLabel.TextSize = 14
+statusLabel.TextColor3 = Color3.fromRGB(255,140,140); statusLabel.Text = ""
 
--- ================= FUNCIONES DEL PANEL =================
-local function onLoginSuccess()
-    if loginGui and loginGui.Parent then
-        loginGui:Destroy()
-    end
-    
-    -- Mostrar label permanente NeonShop Account arriba derecha
-    local gui = Instance.new("ScreenGui", playerGui)
-    gui.Name = "NeonAccountLabelGui"
-    gui.ResetOnSpawn = false
+-- =========== FOV GUI ===========
+local fovGui = Instance.new("ScreenGui", playerGui)
+fovGui.Name = "NeonFOVGui"
+fovGui.ResetOnSpawn = false
+local fovFrame = Instance.new("Frame", fovGui)
+fovFrame.Name = "FOVFrame"
+fovFrame.Size = UDim2.new(0, FOV_DEFAULT or FOV_DEFAULT, 0, FOV_DEFAULT or FOV_DEFAULT)
+fovFrame.AnchorPoint = Vector2.new(0.5,0.5)
+fovFrame.Position = UDim2.new(0.5,0,0.5,0)
+fovFrame.BackgroundTransparency = 1
+fovFrame.Visible = false
+local fovStroke = Instance.new("UIStroke", fovFrame); fovStroke.Thickness = 2; fovStroke.Color = Color3.fromRGB(160,60,200)
+local fovCorner = Instance.new("UICorner", fovFrame); fovCorner.CornerRadius = UDim.new(0,999)
+fovGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() fovFrame.Position = UDim2.new(0.5,0,0.5,0) end)
 
-    local label = Instance.new("TextLabel", gui)
-    label.AnchorPoint = Vector2.new(1,0)
-    label.Position = UDim2.new(1,-10,0.02,0)
-    label.Size = UDim2.new(0,220,0,36)
-    label.BackgroundTransparency = 1
-    label.Text = "NeonShop Account"
-    label.Font = Enum.Font.GothamBold
-    label.TextScaled = true
-    label.TextColor3 = Color3.fromRGB(180,0,255)
-    
-    -- ================= MENU DE CHEATS =================
-    local menu = Instance.new("Frame", gui)
-    menu.Size = UDim2.new(0,360,0,220)
-    menu.Position = UDim2.new(0.5,-180,0.5,-110)
-    menu.BackgroundColor3 = Color3.fromRGB(25,25,25)
-    menu.BackgroundTransparency = 0.08
-    menu.BorderSizePixel = 0
+-- =========== MAIN PANEL (post-login, creado pero oculto) ===========
+local mainGui = Instance.new("ScreenGui", playerGui)
+mainGui.Name = "NeonMainGui"
+mainGui.ResetOnSpawn = false
+mainGui.Enabled = false
 
-    local menuTitle = Instance.new("TextLabel", menu)
-    menuTitle.Size = UDim2.new(1,0,0,40)
-    menuTitle.Position = UDim2.new(0,0,0,6)
-    menuTitle.BackgroundTransparency = 1
-    menuTitle.Text = "PANEL CHEAT"
-    menuTitle.Font = Enum.Font.GothamBold
-    menuTitle.TextSize = 18
-    menuTitle.TextColor3 = Color3.fromRGB(255,0,0)
-    menuTitle.TextXAlignment = Enum.TextXAlignment.Center
+local pframe = Instance.new("Frame", mainGui)
+pframe.Size = UDim2.new(0,520,0,360)
+pframe.Position = UDim2.new(0.5,-260,0.5,-180)
+pframe.AnchorPoint = Vector2.new(0.5,0.5)
+pframe.BackgroundColor3 = Color3.fromRGB(18,18,18)
+local pfCorner = Instance.new("UICorner", pframe); pfCorner.CornerRadius = UDim.new(0,12)
 
-    -- Botones ejemplo: AimAssist, ESP
-    local function createToggle(name, posY)
-        local btn = Instance.new("TextButton", menu)
-        btn.Size = UDim2.new(0,140,0,36)
-        btn.Position = UDim2.new(0.5,-70,posY,0)
-        btn.Text = name.." OFF"
-        btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 16
-        btn.TextColor3 = Color3.fromRGB(255,255,255)
-        btn.BackgroundColor3 = Color3.fromRGB(120,30,180)
-        btn.BorderSizePixel = 0
-        local state = false
-        btn.MouseButton1Click:Connect(function()
-            state = not state
-            btn.Text = name.." "..(state and "ON" or "OFF")
-            if name=="ESP" then _G.ESP_ON = state end
-            if name=="AimAssist" then _G.AIM_ON = state end
-        end)
-        return btn
-    end
+local header = Instance.new("TextLabel", pframe)
+header.Size = UDim2.new(1,0,0,44); header.Position = UDim2.new(0,0,0,0)
+header.BackgroundTransparency = 1; header.Font = Enum.Font.GothamBold; header.TextSize = 20
+header.TextColor3 = Color3.fromRGB(220,40,40); header.Text = "PANEL DE ENTRENAMIENTO"
 
-    createToggle("AimAssist", 50)
-    createToggle("ESP", 100)
+local neonLabel = Instance.new("TextLabel", pframe)
+neonLabel.Size = UDim2.new(0,220,0,28)
+neonLabel.Position = UDim2.new(1,-240,0,8)
+neonLabel.BackgroundTransparency = 1
+neonLabel.Font = Enum.Font.GothamBold
+neonLabel.TextSize = 16
+neonLabel.TextColor3 = Color3.fromRGB(180,0,255)
+neonLabel.Text = "NeonShop Account"
+neonLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-    -- Toggle menu con Mayus Derecho
-    local menuVisible = true
-    game:GetService("UserInputService").InputBegan:Connect(function(input,gameProcessed)
-        if input.KeyCode==Enum.KeyCode.RightShift then
-            menuVisible = not menuVisible
-            menu.Visible = menuVisible
-        end
-    end)
+local nameLabel = Instance.new("TextLabel", pframe)
+nameLabel.Size = UDim2.new(0,360,0,28); nameLabel.Position = UDim2.new(0,126,0,76)
+nameLabel.BackgroundTransparency = 1; nameLabel.Font = Enum.Font.Gotham; nameLabel.TextSize = 18
+nameLabel.TextColor3 = Color3.fromRGB(220,220,220); nameLabel.Text = "Jugador: "..player.Name
 
-    -- ================= ESP BOX =================
-    _G.ESP_ON = true
-    local ESP_Holder = Instance.new("Folder", game.CoreGui)
-    ESP_Holder.Name = "ESP"
-
-    local function UpdateESP()
-        for _,v in pairs(game.Players:GetPlayers()) do
-            if v~=player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                local existing = ESP_Holder:FindFirstChild(v.Name)
-                if not existing then
-                    local box = Instance.new("BoxHandleAdornment")
-                    box.Name = v.Name
-                    box.Size = Vector3.new(2,5,1)
-                    box.Adornee = v.Character.HumanoidRootPart
-                    box.AlwaysOnTop = true
-                    box.ZIndex = 1
-                    box.Transparency = 0.6
-                    box.Parent = ESP_Holder
-                end
-                if _G.ESP_ON then
-                    local box = ESP_Holder:FindFirstChild(v.Name)
-                    if v.Team then
-                        if v.TeamColor==player.TeamColor then
-                            box.Color3 = Color3.fromRGB(0,0,255)
-                        else
-                            box.Color3 = Color3.fromRGB(255,0,0)
-                        end
-                    else
-                        box.Color3 = Color3.fromRGB(180,0,255)
-                    end
-                    box.Visible = true
-                else
-                    local box = ESP_Holder:FindFirstChild(v.Name)
-                    if box then box.Visible=false end
-                end
-            end
-        end
-    end
-
-    game:GetService("RunService").RenderStepped:Connect(UpdateESP)
-
-    game.Players.PlayerAdded:Connect(function(v)
-        v.CharacterAdded:Connect(function()
-            wait(0.1)
-            UpdateESP()
-        end)
-    end)
-
-    game.Players.PlayerRemoving:Connect(function(v)
-        local box = ESP_Holder:FindFirstChild(v.Name)
-        if box then box:Destroy() end
-    end)
-
-    -- ================= AIMASSIST (ejemplo) =================
-    _G.AIM_ON = false
-    local Aimbot = loadstring(game:HttpGet("https://raw.githubusercontent.com/Exunys/Aimbot-V3/main/src/Aimbot.lua"))()
-    Aimbot.Load()
+-- botones
+local function mkButton(parent,pos,text)
+	local b = Instance.new("TextButton", parent)
+	b.Size = UDim2.new(0,240,0,44)
+	b.Position = pos
+	b.Font = Enum.Font.Gotham
+	b.TextSize = 16
+	b.Text = text
+	b.BackgroundColor3 = Color3.fromRGB(100,100,100)
+	local c = Instance.new("UICorner", b); c.CornerRadius = UDim.new(0,8)
+	return b
 end
 
--- ================= BOTÓN LOGIN =================
-loginBtn.MouseButton1Click:Connect(function()
-    local u = userBox.Text or ""
-    local p = passBox.Text or ""
-    if findAccount(u,p) then
-        feedback.TextColor3 = Color3.fromRGB(120,255,120)
-        feedback.Text = "Inicio de sesión correcto. Cargando..."
-        wait(0.4)
-        onLoginSuccess()
-    else
-        feedback.TextColor3 = Color3.fromRGB(255,120,120)
-        feedback.Text = "Usuario o contraseña incorrectos."
-    end
+local aimBtn = mkButton(pframe, UDim2.new(0,18,0,176), "AimAssist: OFF")
+local espBtn = mkButton(pframe, UDim2.new(0,280,0,176), "ESP: OFF")
+local fovBtn = mkButton(pframe, UDim2.new(0,18,0,236), "FOV: OFF")
+local trainBtn = mkButton(pframe, UDim2.new(0,280,0,236), "TrainingMode: OFF (Server)")
+
+local strengthLabel = Instance.new("TextLabel", pframe)
+strengthLabel.Size = UDim2.new(0,360,0,22); strengthLabel.Position = UDim2.new(0,18,0,288)
+strengthLabel.BackgroundTransparency = 1; strengthLabel.Font = Enum.Font.Gotham; strengthLabel.TextSize = 14
+strengthLabel.TextColor3 = Color3.fromRGB(200,200,200)
+strengthLabel.Text = "Potencia AimAssist: "..tostring(math.floor(AIM_STRENGTH_DEFAULT*100)).."%"
+
+-- runtime state
+local state = {
+	aimassist = false,
+	esp = false,
+	fov = false,
+	aimstrength = AIM_STRENGTH_DEFAULT,
+	fovsize = FOV_DEFAULT,
+	trainingMode = false
+}
+
+-- toggle panel con RightShift (siempre existe)
+mainGui.Enabled = false
+UserInputService.InputBegan:Connect(function(input, gp)
+	if input.KeyCode == Enum.KeyCode.RightShift then
+		mainGui.Enabled = not mainGui.Enabled
+	end
 end)
 
-userBox.FocusLost:Connect(function(enter) if enter then loginBtn:CaptureFocus() loginBtn.MouseButton1Click:Fire() end end)
-passBox.FocusLost:Connect(function(enter) if enter then loginBtn:CaptureFocus() loginBtn.MouseButton1Click:Fire() end end)
+-- handlers UI
+aimBtn.MouseButton1Click:Connect(function()
+	state.aimassist = not state.aimassist
+	aimBtn.Text = "AimAssist: "..(state.aimassist and "ON" or "OFF")
+	aimBtn.BackgroundColor3 = state.aimassist and Color3.fromRGB(80,160,80) or Color3.fromRGB(100,100,100)
+end)
+espBtn.MouseButton1Click:Connect(function()
+	state.esp = not state.esp
+	espBtn.Text = "ESP: "..(state.esp and "ON" or "OFF")
+	espBtn.BackgroundColor3 = state.esp and Color3.fromRGB(80,160,80) or Color3.fromRGB(100,100,100)
+end)
+fovBtn.MouseButton1Click:Connect(function()
+	state.fov = not state.fov
+	fovBtn.Text = "FOV: "..(state.fov and "ON" or "OFF")
+	fovBtn.BackgroundColor3 = state.fov and Color3.fromRGB(80,160,80) or Color3.fromRGB(100,100,100)
+	fovFrame.Visible = state.fov
+end)
+trainBtn.MouseButton1Click:Connect(function()
+	state.trainingMode = not state.trainingMode
+	trainBtn.Text = "TrainingMode: "..(state.trainingMode and "ON (Server)" or "OFF (Server)")
+	trainBtn.BackgroundColor3 = state.trainingMode and Color3.fromRGB(80,160,80) or Color3.fromRGB(100,100,100)
+	-- si tienes RemoteEvent para TRAINING en servidor lo llamas aquí:
+	-- pcall(function() game.ReplicatedStorage:WaitForChild("TrainingToggleEvent"):FireServer(state.trainingMode) end)
+end)
+
+-- login handler
+local function tryLogin()
+	local u = trim(userBox.Text)
+	local p = trim(passBox.Text)
+	if u=="" or p=="" then
+		statusLabel.TextColor3 = Color3.fromRGB(255,150,150)
+		statusLabel.Text = "Introduce usuario y contraseña"
+		return
+	end
+	if findAccount(u,p) then
+		statusLabel.TextColor3 = Color3.fromRGB(120,255,120)
+		statusLabel.Text = "Acceso correcto. Abriendo panel..."
+		task.wait(0.18)
+		if loginGui and loginGui.Parent then loginGui:Destroy() end
+		mainGui.Enabled = true
+		fovFrame.Size = UDim2.new(0, state.fovsize, 0, state.fovsize)
+	else
+		statusLabel.TextColor3 = Color3.fromRGB(255,120,120)
+		statusLabel.Text = "Usuario o contraseña incorrectos."
+	end
+end
+
+loginBtn.MouseButton1Click:Connect(tryLogin)
+userBox.FocusLost:Connect(function(enter) if enter then tryLogin() end end)
+passBox.FocusLost:Connect(function(enter) if enter then tryLogin() end end)
+
+-- =========== ESP (Highlight) ===========
+local highlights = {}
+local function ensureHighlightFor(pl)
+	if not pl.Character then return nil end
+	if highlights[pl] and highlights[pl].Parent == pl.Character then return highlights[pl] end
+	if highlights[pl] then pcall(function() highlights[pl]:Destroy() end) end
+	local ok, h = pcall(function()
+		local nh = Instance.new("Highlight")
+		nh.Name = "NeonTrainESP"
+		nh.Adornee = pl.Character
+		nh.Parent = pl.Character
+		nh.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		nh.Enabled = false
+		return nh
+	end)
+	if ok then highlights[pl] = h; return h end
+	return nil
+end
+
+local function updateESP()
+	for _,pl in pairs(Players:GetPlayers()) do
+		if pl ~= player and pl.Character and pl.Character:FindFirstChild("HumanoidRootPart") then
+			local h = ensureHighlightFor(pl)
+			if h then
+				local color = (pl.TeamColor == player.TeamColor) and Color3.fromRGB(60,180,255) or Color3.fromRGB(255,80,80)
+				h.FillColor = color
+				h.OutlineColor = color
+				h.Enabled = state.esp
+			end
+		end
+	end
+	for pl,_ in pairs(highlights) do
+		if not Players:FindFirstChild(pl.Name) or not pl.Character then
+			pcall(function() highlights[pl]:Destroy() end)
+			highlights[pl] = nil
+		end
+	end
+end
+spawn(function()
+	while true do
+		pcall(updateESP)
+		task.wait(ESP_UPDATE_RATE)
+	end
+end)
+
+-- =========== AimAssist (mantener clic derecho) ===========
+local aiming = false
+UserInputService.InputBegan:Connect(function(i,gp) if i.UserInputType == AIM_KEY then aiming = true end end)
+UserInputService.InputEnded:Connect(function(i,gp) if i.UserInputType == AIM_KEY then aiming = false end end)
+
+local function angleBetween(a,b) local dot = a:Dot(b); dot = math.clamp(dot,-1,1); return math.deg(math.acos(dot)) end
+
+local function findBestTarget()
+	if not Camera or not Camera.CFrame then return nil end
+	local camPos = Camera.CFrame.Position
+	local camLook = Camera.CFrame.LookVector
+	local best, bestScore = nil, math.huge
+	for _,pl in pairs(Players:GetPlayers()) do
+		if pl ~= player and pl.Character and pl.Character:FindFirstChild("Head") and pl.Character:FindFirstChild("Humanoid") then
+			local head = pl.Character.Head
+			local toHead = head.Position - camPos
+			local dist = toHead.Magnitude
+			if dist <= AIM_MAX_DIST then
+				local dir = toHead.Unit
+				local ang = angleBetween(camLook, dir)
+				if ang <= AIM_MAX_ANGLE then
+					local score = ang + dist/100
+					if score < bestScore then bestScore = score; best = {player=pl, head=head, ang=ang, dist=dist} end
+				end
+			end
+		end
+	end
+	return best
+end
+
+RunService.RenderStepped:Connect(function()
+	-- actualizar FOV visual
+	if state.fov then fovFrame.Size = UDim2.new(0, state.fovsize, 0, state.fovsize) end
+
+	-- AimAssist potente (solo si activado y mantienes clic derecho)
+	if state.aimassist and aiming then
+		local target = findBestTarget()
+		if target and target.head then
+			local camPos = Camera.CFrame.Position
+			local headPos = target.head.Position
+			local desired = (headPos - camPos).Unit
+			local cur = Camera.CFrame.LookVector
+			local nudge = math.clamp(state.aimstrength, 0, 1)
+			local newLook = (cur:Lerp(desired, nudge)).Unit
+			local newCF = CFrame.new(camPos, camPos + newLook)
+			-- Lerp la cámara muy rápido para sensación "pegajosa" (pero no mover la cámara instantáneamente)
+			Camera.CFrame = Camera.CFrame:Lerp(newCF, AIM_CAM_LERP)
+		end
+	end
+end)
+
+print("[NeonAssist] Cargado. Usa Admin/nader123 para entrar. RightShift abre/oculta panel.")
