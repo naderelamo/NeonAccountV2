@@ -4,11 +4,11 @@
 -- CONFIG
 local ACCOUNTS = {
 	{user="Admin", pass="nader765"},
-	{user="free", pass="freeclick"},
+	{user="NeonUser1", pass="NeonAcc1"},
 	{user="NeonUser2", pass="M0nK#72"},
 	{user="NeonUser3", pass="Zebra_88a"},
 	{user="NeonUser4", pass="R!ver2025"},
-	{user="NeonUser5", pass="Cl0ud-911"},
+	{user="NeonUser5", pass="NeonAcc2"},
 	{user="NeonUser6", pass="Sky_7Paz"},
 	{user="NeonUser7", pass="B0lt&44"},
 	{user="NeonUser8", pass="Echo!Delta9"},
@@ -338,4 +338,5 @@ RunService.RenderStepped:Connect(function()
 end)
 
 print("[NeonAssist] Cargado. Usa Admin/nader123 para entrar. RightShift abre/oculta panel.")
+
 
