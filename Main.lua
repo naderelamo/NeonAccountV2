@@ -4,7 +4,7 @@
 -- CONFIG
 local ACCOUNTS = {
 	{user="Admin", pass="nader765"},
-	{user="free1", pass="free10"},
+	{user="free1", pass="0999"},
 	{user="NeonUser2", pass="M0nK#72"},
 	{user="NeonUser3", pass="Zebra_88a"},
 	{user="NeonUser4", pass="R!ver2025"},
