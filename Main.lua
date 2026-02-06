@@ -3,15 +3,15 @@
 
 -- CONFIG
 local ACCOUNTS = {
-	{user="Admin", pass="nader123"},
-	{user="fe1", pass="09"},
+	{user="Ain", pass="nader123"},
+	{user="1", pass="09"},
 	{user="NeonUser2", pass="M0nK#72"},
-	{user="NeonUser3", pass="Zebra_88a"},
-	{user="NeonUser4", pass="R!ver2025"},
-	{user="NeonUser5", pass="NeonAcc2"},
-	{user="NeonUser6", pass="Sky_7Paz"},
-	{user="NeonUser7", pass="B0lt&44"},
-	{user="NeonUser8", pass="Echo!Delta9"},
+	{user="Neser3", pass="Zebra_88a"},
+	{user="NnUser4", pass="R!ver2025"},
+	{user="Neoser5", pass="NeonAcc2"},
+	{user="NeonUr6", pass="Sky_7Paz"},
+	{user="NeUser7", pass="B0lt&44"},
+	{user="NeUser8", pass="Echo!Delta9"},
 }
 local EXPIRATION_DAYS = 90
 
