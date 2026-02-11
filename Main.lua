@@ -3,7 +3,7 @@
 
 -- CONFIG
 local ACCOUNTS = {
-	{user="Ain", pass="nader123"},
+	{user="Neon", pass="Regalo"},
 	{user="1", pass="09"},
 	{user="NeonUser2", pass="M0nK#72"},
 	{user="Neser3", pass="Zebra_88a"},
